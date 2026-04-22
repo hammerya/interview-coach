@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* Warm, energetic palette — blush background, persimmon primary, berry secondary,
+   marigold accent. Less brown, more life. */
+:root {
+  --background: #ffefe2;
+  --foreground: #21101a;
+  --card: #ffffff;
+  --card-foreground: #21101a;
+  --muted: #ffdcc5;
+  --muted-foreground: #6d3a3a;
+  --border: #f3c0a0;
+  --input: #ffe0cc;
+  --ring: #f04425;
+  --primary: #f04425;
+  --primary-foreground: #fff6ef;
+  --primary-hover: #c22d18;
+  --secondary: #c8355f;
+  --secondary-foreground: #fff6ef;
+  --accent: #ff9820;
+  --accent-foreground: #21101a;
+  --success: #6e9640;
+  --destructive: #9a2618;
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-destructive: var(--destructive);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    sans-serif;
+  --font-serif: ui-serif, Georgia, "Times New Roman", serif;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-height: 100%;
+}
+
+body {
+  background-image:
+    radial-gradient(1100px 750px at 8% -10%, rgba(255, 152, 32, 0.32), transparent 60%),
+    radial-gradient(1000px 700px at 100% 5%, rgba(240, 68, 37, 0.21), transparent 55%),
+    radial-gradient(900px 700px at 50% 110%, rgba(200, 53, 95, 0.16), transparent 60%);
+  background-attachment: fixed;
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--border);
+}
+
+/* Nicer focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Serif display for warmth */
+.display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* Subtle fade-in for prompts during mock interview */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-in {
+  animation: fade-in-up 0.25s ease-out both;
+}
