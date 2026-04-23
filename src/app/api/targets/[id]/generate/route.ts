@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAnthropic, CLAUDE_MODEL, extractJson } from "@/lib/anthropic";
 import type { GeneratedQuestion, InterviewTarget, Profile } from "@/lib/types";
 import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
-// Max allowed on Vercel Hobby. Bump on Pro if you want a safety margin.
+// Vercel Hobby caps serverless functions at 60s. Stay well under.
 export const maxDuration = 60;
 
 interface LLMResponse {
@@ -34,7 +33,7 @@ CANDIDATE PROFILE
 - How they like feedback: ${profile.feedback_style ?? "(not set)"}
 
 RESUME TEXT (may be truncated):
-${profile.resume_text ? profile.resume_text.slice(0, 8000) : "(no resume uploaded)"}
+${profile.resume_text ? profile.resume_text.slice(0, 6000) : "(no resume uploaded)"}
 
 INTERVIEW TARGET
 - Company: ${target.company_name}
@@ -46,14 +45,14 @@ INTERVIEW TARGET
 - Interviewer details: ${target.interviewer_details || "(none)"}
 
 YOUR TASK
-1. Write 3–5 sentences of research notes synthesizing what a well-prepared candidate would want to know about this company and role. Base this on widely known public information; where specific facts aren't available, explicitly prompt the candidate to verify.
-2. Generate 18 interview questions the candidate is likely to be asked. Mix categories: behavioral, technical, situational, culture-fit, role-specific, and closing questions (candidate asks interviewer). Tailor heavily to the candidate's profile, strengths, gaps, and the specific role.
+1. Write 3 concise sentences of research notes synthesizing what a well-prepared candidate would want to know about this company and role. Base this on widely known public information; where specific facts aren't available, tell the candidate to verify.
+2. Generate exactly 12 interview questions the candidate is likely to be asked. Mix categories: behavioral, technical, situational, culture-fit, role-specific, and closing questions (candidate asks interviewer). Tailor heavily to the candidate's profile, strengths, gaps, and the specific role.
 3. For each question include:
    - question: the exact question
    - category: one of behavioral | technical | situational | culture-fit | role-specific | closing
-   - reasoning: 1–2 sentences on why an interviewer would ask this
-   - answerFormat: a concise recommended structure (e.g. "STAR: Situation → Task → Action → Result, 90 seconds")
-   - sampleAnswer: a brief sample answer in the candidate's voice, grounded in their profile (2–4 sentences)
+   - reasoning: ONE sentence on why an interviewer would ask this
+   - answerFormat: one short line on recommended structure (e.g. "STAR, 90 seconds")
+   - sampleAnswer: TWO sentences max, in the candidate's voice, grounded in their profile
 
 Return ONLY valid JSON in this shape, no prose before or after:
 {
@@ -70,7 +69,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
 
   // Load the target and make sure it belongs to the current user
   const { data: targetRow, error: targetErr } = await supabase
@@ -80,13 +79,13 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     .eq("user_id", user.id)
     .maybeSingle();
   if (targetErr || !targetRow) {
-    return NextResponse.json({ error: "Target not found" }, { status: 404 });
+    return jsonResponse({ error: "Target not found" }, 404);
   }
   const target = targetRow as InterviewTarget;
 
-  // Idempotency — if questions already exist, just report success
+  // Idempotency — if questions already exist, report success immediately
   if (target.questions && target.questions.length > 0) {
-    return NextResponse.json({ ok: true, alreadyGenerated: true });
+    return jsonResponse({ ok: true, alreadyGenerated: true }, 200);
   }
 
   const { data: profileRow, error: profileErr } = await supabase
@@ -95,55 +94,104 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     .eq("user_id", user.id)
     .maybeSingle();
   if (profileErr || !profileRow) {
-    return NextResponse.json({ error: "Complete your profile first" }, { status: 400 });
+    return jsonResponse({ error: "Complete your profile first" }, 400);
   }
   const profile = profileRow as Profile;
 
-  try {
-    const client = getAnthropic();
-    const completion = await client.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 6000,
-      system:
-        "You are a warm, encouraging interview coach who writes thoughtful, personalized interview question lists.",
-      messages: [
-        {
-          role: "user",
-          content: buildPrompt(profile, target),
-        },
-      ],
-    });
-    const text = completion.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as { text: string }).text)
-      .join("\n");
-    const llm = extractJson<LLMResponse>(text);
-    const questions: GeneratedQuestion[] = (llm.questions ?? []).map((q) => ({
-      id: randomUUID(),
-      category: q.category,
-      question: q.question,
-      reasoning: q.reasoning,
-      answerFormat: q.answerFormat,
-      sampleAnswer: q.sampleAnswer,
-    }));
+  // Stream the response so Vercel's edge gateway sees bytes flowing and doesn't
+  // fire its 60s idle timeout. We emit a tiny keep-alive padding every second
+  // while Claude is generating; the final line is the JSON payload the client
+  // actually uses.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(" "));
+        } catch {
+          /* controller already closed */
+        }
+      }, 1000);
 
-    const { error: updateErr } = await supabase
-      .from("interview_targets")
-      .update({
-        research_notes: llm.research_notes ?? null,
-        questions,
-      })
-      .eq("id", id);
-    if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
-    }
+      try {
+        const client = getAnthropic();
+        // Use streaming so we can collect tokens without blocking, and so
+        // Anthropic's SDK gives us progress. (We still buffer the final text.)
+        const streamResp = client.messages.stream({
+          model: CLAUDE_MODEL,
+          max_tokens: 4500,
+          system:
+            "You are a warm, encouraging interview coach who writes thoughtful, personalized interview question lists. You reply ONLY with valid JSON — no prose outside the JSON object.",
+          messages: [
+            {
+              role: "user",
+              content: buildPrompt(profile, target),
+            },
+          ],
+        });
 
-    return NextResponse.json({ ok: true, count: questions.length });
-  } catch (err) {
-    console.error("Question generation failed", err);
-    return NextResponse.json(
-      { error: "Generation failed", detail: String(err) },
-      { status: 500 },
-    );
-  }
+        const final = await streamResp.finalMessage();
+        const text = final.content
+          .filter((b) => b.type === "text")
+          .map((b) => (b as { text: string }).text)
+          .join("\n");
+        const llm = extractJson<LLMResponse>(text);
+        const questions: GeneratedQuestion[] = (llm.questions ?? []).map((q) => ({
+          id: randomUUID(),
+          category: q.category,
+          question: q.question,
+          reasoning: q.reasoning,
+          answerFormat: q.answerFormat,
+          sampleAnswer: q.sampleAnswer,
+        }));
+
+        const { error: updateErr } = await supabase
+          .from("interview_targets")
+          .update({
+            research_notes: llm.research_notes ?? null,
+            questions,
+          })
+          .eq("id", id);
+        if (updateErr) throw new Error(updateErr.message);
+
+        controller.enqueue(
+          encoder.encode(
+            "\n" + JSON.stringify({ ok: true, count: questions.length }) + "\n",
+          ),
+        );
+      } catch (err) {
+        console.error("Question generation failed", err);
+        controller.enqueue(
+          encoder.encode(
+            "\n" +
+              JSON.stringify({
+                ok: false,
+                error: "Generation failed",
+                detail: String(err),
+              }) +
+              "\n",
+          ),
+        );
+      } finally {
+        clearInterval(heartbeat);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }

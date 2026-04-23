@@ -5,6 +5,14 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
+interface GenerationResult {
+  ok?: boolean;
+  alreadyGenerated?: boolean;
+  count?: number;
+  error?: string;
+  detail?: string;
+}
+
 export function GenerationTrigger({ targetId }: { targetId: string }) {
   const router = useRouter();
   const fired = useRef(false);
@@ -19,11 +27,51 @@ export function GenerationTrigger({ targetId }: { targetId: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Generation failed (${res.status})`);
+      if (!res.ok || !res.body) {
+        // Non-stream error (auth, 404, 5xx before stream starts)
+        const maybeJson = await res.json().catch(() => null);
+        throw new Error(
+          (maybeJson && maybeJson.error) || `Generation failed (${res.status})`,
+        );
       }
-      // Pull the freshly-saved questions into the server-rendered view.
+
+      // Read the NDJSON stream. The server sends space bytes as a heartbeat
+      // while Claude generates, then a final JSON line with the result.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let last: GenerationResult | null = null;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // Any complete JSON line wins — heartbeats are just whitespace.
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            last = JSON.parse(trimmed) as GenerationResult;
+          } catch {
+            /* not a JSON line yet — ignore */
+          }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          last = JSON.parse(buffer.trim()) as GenerationResult;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (!last) {
+        throw new Error("Generation finished with no response");
+      }
+      if (last.ok === false) {
+        throw new Error(last.error ?? "Generation failed");
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
