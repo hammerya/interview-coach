@@ -4,10 +4,10 @@ import { Nav } from "@/components/nav";
 import { getAuthedClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
 import { formatDate, daysUntil } from "@/lib/utils";
 import type { InterviewTarget, MockInterview } from "@/lib/types";
 import { QuestionList } from "./question-list";
+import { GenerationTrigger } from "./generation-trigger";
 import { Calendar, Building2, ArrowLeft } from "lucide-react";
 
 export default async function TargetPage({ params }: { params: Promise<{ id: string }> }) {
@@ -91,13 +91,7 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
           {t.questions && t.questions.length > 0 ? (
             <QuestionList questions={t.questions} />
           ) : (
-            <Alert variant="warning" className="mt-4">
-              We couldn't generate your question list just now.{" "}
-              <Link className="font-medium underline" href="/targets/new">
-                Try again
-              </Link>
-              .
-            </Alert>
+            <GenerationTrigger targetId={t.id} />
           )}
         </section>
 
