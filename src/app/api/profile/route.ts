@@ -14,14 +14,10 @@ function splitList(value: string): string[] {
 async function extractResumeText(file: File): Promise<string> {
   const bytes = Buffer.from(await file.arrayBuffer());
   if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: new Uint8Array(bytes) });
-    try {
-      const result = await parser.getText();
-      return result.text;
-    } finally {
-      await parser.destroy();
-    }
+    const { extractText, getDocumentProxy } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(bytes));
+    const { text } = await extractText(pdf, { mergePages: true });
+    return text;
   }
   // text/plain or anything else we try as UTF-8
   return bytes.toString("utf8");
