@@ -95,7 +95,7 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
           </Card>
         ) : null}
 
-        <section className="mt-10">
+        <section id="application-materials" className="mt-10 scroll-mt-24">
           <h2 className="display text-2xl font-semibold">Application materials</h2>
           <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
             Tailored resume edits, a cover letter in your voice, and a one-line pitch

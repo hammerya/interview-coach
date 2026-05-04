@@ -94,7 +94,7 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="display text-4xl font-semibold">
-              Hi{p?.full_name ? `, ${p.full_name.split(" ")[0]}` : ""} 👋
+              Hi{p?.full_name ? `, ${p.full_name.split(" ")[0]}` : ""}
             </h1>
             <p className="mt-2 text-[var(--color-muted-foreground)]">
               {p?.intake_completed
@@ -150,6 +150,7 @@ export default async function DashboardPage() {
                       interviewDate={t.interview_date}
                       completedCount={s.completed}
                       averageScore={s.avg}
+                      tier={CURRENT_TIER}
                     />
                   );
                 })}

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Trophy, Hash } from "lucide-react";
+import { Calendar, Trophy, Hash, Wand2, Lock } from "lucide-react";
 import { formatDate, daysUntil } from "@/lib/utils";
+
+type Tier = "warmup" | "full" | "premium";
 
 interface TargetCardProps {
   id: string;
@@ -14,6 +16,11 @@ interface TargetCardProps {
   interviewDate: string | null;
   completedCount: number;
   averageScore: number | null;
+  /**
+   * Drives the "Tailor resume" button: routes to the target's application-
+   * materials section on premium, or to /pricing for everyone else.
+   */
+  tier: Tier;
 }
 
 /**
@@ -73,7 +80,9 @@ function CompanyLogo({ companyName }: { companyName: string }) {
 }
 
 export function TargetCard(props: TargetCardProps) {
-  const { id, companyName, jobTitle, interviewDate, completedCount, averageScore } = props;
+  const { id, companyName, jobTitle, interviewDate, completedCount, averageScore, tier } = props;
+  const hasResumeTool = tier === "premium";
+  const resumeHref = hasResumeTool ? `/targets/${id}#application-materials` : "/pricing";
   const days = interviewDate ? daysUntil(interviewDate) : null;
   const dateBadge =
     days === null
@@ -145,6 +154,28 @@ export function TargetCard(props: TargetCardProps) {
             <Button className="w-full">Practice interview</Button>
           </Link>
         </div>
+
+        <Link href={resumeHref} className="mt-2 block">
+          <Button
+            variant={hasResumeTool ? "secondary" : "ghost"}
+            className={
+              "w-full " +
+              (hasResumeTool
+                ? ""
+                : "border border-dashed border-[var(--color-border)] text-[var(--color-muted-foreground)]")
+            }
+          >
+            {hasResumeTool ? (
+              <>
+                <Wand2 className="h-4 w-4" /> Tailor resume
+              </>
+            ) : (
+              <>
+                <Lock className="h-3.5 w-3.5" /> Tailor resume — Upgrade
+              </>
+            )}
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   );
