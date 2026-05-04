@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Interview Coach — prep, practice, and gentle real-time support",
   description:
-    "A warm, private space to prepare for interviews — resume-aware question lists, mock interviews with personalized feedback, and live prompts when you need them.",
+    "A warm, private space to prepare for interviews — resume-aware question lists, practice interviews with personalized feedback, and live prompts when you need them.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

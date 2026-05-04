@@ -37,8 +37,8 @@ export default function Home() {
           <p className="mt-6 text-lg text-[var(--color-muted-foreground)] leading-relaxed">
             Upload your resume, tell us where you're interviewing, and we'll craft a
             personalized question list with reasoning, answer formats, and optional samples.
-            Practice with a mock interviewer in your preferred style. Come back to it as
-            many times as you need.
+            Run practice interviews in your preferred interviewer style. Come back to them
+            as many times as you need.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/sign-up">
@@ -65,7 +65,7 @@ export default function Home() {
           />
           <FeatureCard
             icon={<Mic className="h-6 w-6" />}
-            title="Mock interviews"
+            title="Practice interviews"
             body="Single question, five, or the full set — with a warm, analytical, or challenging interviewer."
           />
           <FeatureCard
@@ -109,7 +109,7 @@ export default function Home() {
             </div>
             <div className="rounded-xl bg-[var(--color-muted)] p-6">
               <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                Every mock is scored on
+                Every practice session is scored on
               </div>
               <ul className="mt-3 space-y-2 text-sm">
                 <li className="flex justify-between"><span>Clarity</span><span className="text-[var(--color-muted-foreground)]">/100</span></li>

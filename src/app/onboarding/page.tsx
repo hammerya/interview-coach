@@ -27,7 +27,7 @@ export default async function OnboardingPage() {
             Let's get to know you
           </h1>
           <p className="mt-3 text-[var(--color-muted-foreground)] leading-relaxed">
-            Your answers here shape every question list and mock interview going forward.
+            Your answers here shape every question list and practice interview going forward.
             Be honest — there's no wrong answer. You can update any of this later.
           </p>
         </div>

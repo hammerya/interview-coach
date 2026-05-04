@@ -16,7 +16,7 @@ import {
 export const metadata = {
   title: "Our process · Interview Coach",
   description:
-    "How Interview Coach builds your prep — resume intake, tailored question generation, mock interviews, and the scoring rubric behind the feedback.",
+    "How Interview Coach builds your prep — resume intake, tailored question generation, practice interviews, and the scoring rubric behind the feedback.",
 };
 
 export default function ProcessPage() {
@@ -79,7 +79,7 @@ export default function ProcessPage() {
               Scoring system
             </span>
             <h2 className="display mt-5 text-4xl font-semibold">
-              How your mock answers are graded
+              How your practice answers are graded
             </h2>
             <p className="mt-4 text-[var(--color-muted-foreground)] leading-relaxed">
               Every answer is scored on four dimensions. We combine them into an overall
@@ -119,7 +119,7 @@ export default function ProcessPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-[var(--color-primary)]" />
-                What you get after every mock
+                What you get after every practice session
               </CardTitle>
               <CardDescription>
                 An overall score, the four-dimension breakdown, a short summary of how
@@ -151,7 +151,7 @@ export default function ProcessPage() {
         </section>
 
         <section className="mt-20 text-center">
-          <h2 className="display text-3xl font-semibold">Ready to run a mock?</h2>
+          <h2 className="display text-3xl font-semibold">Ready to run a practice interview?</h2>
           <p className="mt-3 text-[var(--color-muted-foreground)]">
             The first one's free. So are the next few.
           </p>

@@ -53,11 +53,11 @@ export default async function MockResultsPage({
             <span className="text-3xl text-[var(--color-muted-foreground)]">/100</span>
           </h1>
           <p className="mt-3 max-w-2xl mx-auto text-[var(--color-muted-foreground)] leading-relaxed">
-            {s?.summary ?? "You finished your mock — beautiful. Here's a quick read of how it went."}
+            {s?.summary ?? "You finished your practice interview — beautiful. Here's a quick read of how it went."}
           </p>
           <div className="mt-5 flex items-center justify-center gap-2">
             <Link href={`/targets/${id}/mock/new`}>
-              <Button>Try another mock</Button>
+              <Button>Try another practice interview</Button>
             </Link>
             <Link href={`/targets/${id}`}>
               <Button variant="outline">Back to question list</Button>

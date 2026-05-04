@@ -72,7 +72,7 @@ export function NewMockForm({
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Could not start mock interview");
+        throw new Error(body.error ?? "Could not start practice interview");
       }
       const { id } = await res.json();
       router.push(`/targets/${targetId}/mock/${id}`);

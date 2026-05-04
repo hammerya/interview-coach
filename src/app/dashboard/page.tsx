@@ -111,7 +111,7 @@ export default async function DashboardPage() {
                             </Button>
                           </Link>
                           <Link href={`/targets/${t.id}/mock/new`} className="flex-1">
-                            <Button className="w-full">Mock interview</Button>
+                            <Button className="w-full">Practice interview</Button>
                           </Link>
                         </div>
                       </CardContent>

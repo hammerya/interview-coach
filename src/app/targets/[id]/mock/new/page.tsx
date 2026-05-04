@@ -28,7 +28,7 @@ export default async function NewMockPage({ params }: { params: Promise<{ id: st
             Section 3 of 3
           </span>
           <h1 className="display mt-2 text-4xl font-semibold">
-            Let's set up your mock interview
+            Let's set up your practice interview
           </h1>
           <p className="mt-3 text-[var(--color-muted-foreground)] leading-relaxed">
             Pick a length and an interviewer style. You can do this as many times as you want —

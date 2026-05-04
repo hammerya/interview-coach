@@ -59,11 +59,11 @@ export async function POST(request: Request) {
       model: CLAUDE_MODEL,
       max_tokens: 1200,
       system:
-        "You are a warm but honest interview coach writing a final mock-interview report. Return JSON only.",
+        "You are a warm but honest interview coach writing a final practice-interview report. Return JSON only.",
       messages: [
         {
           role: "user",
-          content: `Write a final report for this mock interview.
+          content: `Write a final report for this practice interview.
 
 ROLE: ${target?.job_title} at ${target?.company_name}
 CANDIDATE FEEDBACK PREFERENCE: ${profile?.feedback_style ?? "direct but kind"}

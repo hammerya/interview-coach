@@ -68,7 +68,7 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
           </div>
           <div className="flex gap-2">
             <Link href={`/targets/${t.id}/mock/new`}>
-              <Button size="lg">Start mock interview</Button>
+              <Button size="lg">Start practice interview</Button>
             </Link>
           </div>
         </header>
@@ -97,7 +97,7 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
 
         {ms.length > 0 ? (
           <section className="mt-12">
-            <h2 className="display text-2xl font-semibold">Your mock interview history</h2>
+            <h2 className="display text-2xl font-semibold">Your practice interview history</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {ms.map((m) => (
                 <Card key={m.id}>

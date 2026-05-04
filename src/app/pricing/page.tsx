@@ -7,7 +7,7 @@ import { Check, Sparkles } from "lucide-react";
 export const metadata = {
   title: "Pricing · Interview Coach",
   description:
-    "Simple pricing — start free, upgrade when you need more. Pro unlocks unlimited mocks. Premium adds the real-time interview copilot.",
+    "Simple pricing — start free, upgrade when you need more. Pro unlocks unlimited practice interviews. Premium adds the real-time interview copilot.",
 };
 
 interface Tier {
@@ -32,7 +32,7 @@ const tiers: Tier[] = [
     ctaHref: "/sign-up",
     features: [
       "1 active interview target",
-      "3 mock interviews per month",
+      "3 practice interviews per month",
       "Tailored question list with reasoning",
       "Per-answer scoring and feedback",
       "Resume upload and parsing",
@@ -49,7 +49,7 @@ const tiers: Tier[] = [
     highlight: true,
     features: [
       "Unlimited interview targets",
-      "Unlimited mock interviews",
+      "Unlimited practice interviews",
       "All three interviewer personalities",
       "Full answer history and progress tracking",
       "Sample answers on every question",
@@ -67,7 +67,7 @@ const tiers: Tier[] = [
     features: [
       "Everything in Prep",
       "Personalized prep calendar tied to your interview date",
-      "Saved best-answer library you can recall mid-mock",
+      "Saved best-answer library you can recall mid-practice",
       "Tone + pacing analysis on transcripts",
       "Priority support with 24-hour response",
     ],
@@ -116,7 +116,7 @@ export default function PricingPage() {
                   a="Yes. Upgrade or downgrade any time. Changes take effect at the next billing cycle and your data stays intact."
                 />
                 <Faq
-                  q="What happens to my mocks if I cancel?"
+                  q="What happens to my practice sessions if I cancel?"
                   a="Your history is preserved. You drop back to Warm-up limits, but everything you've already done stays exactly where it is."
                 />
                 <Faq

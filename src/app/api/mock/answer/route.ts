@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     .eq("user_id", user.id)
     .maybeSingle();
   const mock = mockRow as MockInterview | null;
-  if (!mock) return NextResponse.json({ error: "Mock not found" }, { status: 404 });
+  if (!mock) return NextResponse.json({ error: "Practice session not found" }, { status: 404 });
 
   const [{ data: targetRow }, { data: profileRow }] = await Promise.all([
     supabase.from("interview_targets").select("*").eq("id", mock.target_id).maybeSingle(),

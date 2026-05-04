@@ -12,7 +12,7 @@ export default function SignUpPage() {
           <CardHeader>
             <CardTitle>Let's get you set up</CardTitle>
             <CardDescription>
-              Create an account to save your progress, question lists, and mock interview history.
+              Create an account to save your progress, question lists, and practice interview history.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Alert } from "@/components/ui/alert";
 import { DictationButton } from "@/components/ui/dictation";
+import { QuestionVoice } from "@/components/ui/question-voice";
 
 const personalityIntros: Record<MockInterview["personality"], string> = {
   warm: "Hi, really glad you're here. Take your time — this is a safe space to practice.",
@@ -45,7 +46,8 @@ export function MockRunner({
   if (!current) {
     return (
       <Alert variant="error">
-        We couldn't load the questions for this mock. Please start a new mock interview.
+        We couldn't load the questions for this practice session. Please start a new practice
+        interview.
       </Alert>
     );
   }
@@ -106,10 +108,13 @@ export function MockRunner({
 
       <Card key={current.id} className="animate-in">
         <CardHeader>
-          <div className="text-xs font-medium uppercase tracking-wide text-[var(--color-primary)]">
-            {current.category}
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-[var(--color-primary)]">
+              {current.category}
+            </div>
+            <QuestionVoice text={current.question} speakKey={current.id} />
           </div>
-          <CardTitle className="mt-1 text-2xl">{current.question}</CardTitle>
+          <CardTitle className="mt-2 text-2xl">{current.question}</CardTitle>
           <CardDescription className="mt-3 bg-[var(--color-muted)] rounded-xl p-3 text-[var(--color-foreground)]">
             <strong>Format reminder:</strong> {current.answerFormat}
           </CardDescription>
