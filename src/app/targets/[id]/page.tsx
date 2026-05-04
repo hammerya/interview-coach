@@ -8,6 +8,7 @@ import { formatDate, daysUntil } from "@/lib/utils";
 import type { InterviewTarget, MockInterview } from "@/lib/types";
 import { QuestionList } from "./question-list";
 import { GenerationTrigger } from "./generation-trigger";
+import { ApplicationPack } from "./application-pack";
 import { Calendar, Building2, ArrowLeft } from "lucide-react";
 
 export default async function TargetPage({ params }: { params: Promise<{ id: string }> }) {
@@ -85,6 +86,23 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
         ) : null}
+
+        <section className="mt-10">
+          <h2 className="display text-2xl font-semibold">Application materials</h2>
+          <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+            Tailored resume edits, a cover letter in your voice, and a one-line pitch
+            for this specific role.
+          </p>
+          <div className="mt-4">
+            <ApplicationPack
+              targetId={t.id}
+              pitchHeadline={t.pitch_headline}
+              coverLetter={t.cover_letter}
+              resumeReview={t.resume_review}
+              tailoredResume={t.tailored_resume}
+            />
+          </div>
+        </section>
 
         <section className="mt-10">
           <h2 className="display text-2xl font-semibold">Your question list</h2>

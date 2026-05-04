@@ -65,6 +65,18 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface ResumeEdit {
+  section: string;
+  original: string;
+  suggested: string;
+  why: string;
+}
+
+export interface ResumeReview {
+  summary: string;
+  edits: ResumeEdit[];
+}
+
 export interface InterviewTarget {
   id: string;
   user_id: string;
@@ -78,6 +90,10 @@ export interface InterviewTarget {
   interview_date: string | null;
   questions: GeneratedQuestion[] | null;
   research_notes: string | null;
+  pitch_headline: string | null;
+  cover_letter: string | null;
+  resume_review: ResumeReview | null;
+  tailored_resume: string | null;
   created_at: string;
   updated_at: string;
 }
