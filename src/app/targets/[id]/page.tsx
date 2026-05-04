@@ -25,14 +25,22 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
     .maybeSingle();
   if (!target) notFound();
 
-  const { data: mocks } = await supabase
-    .from("mock_interviews")
-    .select("*")
-    .eq("target_id", id)
-    .order("created_at", { ascending: false });
+  const [{ data: mocks }, { data: profileRow }] = await Promise.all([
+    supabase
+      .from("mock_interviews")
+      .select("*")
+      .eq("target_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("resume_text")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const t = target as InterviewTarget;
   const ms = (mocks as MockInterview[] | null) ?? [];
+  const resumeText = (profileRow?.resume_text as string | null) ?? null;
   const days = t.interview_date ? daysUntil(t.interview_date) : null;
 
   return (
@@ -100,6 +108,7 @@ export default async function TargetPage({ params }: { params: Promise<{ id: str
               coverLetter={t.cover_letter}
               resumeReview={t.resume_review}
               tailoredResume={t.tailored_resume}
+              currentResume={resumeText}
             />
           </div>
         </section>

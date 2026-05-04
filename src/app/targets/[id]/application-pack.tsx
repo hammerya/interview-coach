@@ -30,6 +30,12 @@ interface PackProps {
   coverLetter: string | null;
   resumeReview: ResumeReview | null;
   tailoredResume: string | null;
+  /**
+   * The candidate's master resume text from their profile. Lives on profiles.resume_text
+   * and gets mutated whenever an edit is applied via /api/targets/[id]/apply-edit.
+   * We render it in the "Updated resume" panel at the bottom of the review card.
+   */
+  currentResume: string | null;
 }
 
 interface ApiResult {
@@ -40,7 +46,14 @@ interface ApiResult {
 }
 
 export function ApplicationPack(props: PackProps) {
-  const { targetId, pitchHeadline, coverLetter, resumeReview, tailoredResume } = props;
+  const {
+    targetId,
+    pitchHeadline,
+    coverLetter,
+    resumeReview,
+    tailoredResume,
+    currentResume,
+  } = props;
   const hasPack = Boolean(pitchHeadline && coverLetter && resumeReview);
 
   if (!hasPack) {
@@ -56,7 +69,11 @@ export function ApplicationPack(props: PackProps) {
         <CoverLetterCard targetId={targetId} text={coverLetter} />
       ) : null}
       {resumeReview ? (
-        <ResumeReviewCard targetId={targetId} review={resumeReview} />
+        <ResumeReviewCard
+          targetId={targetId}
+          review={resumeReview}
+          currentResume={currentResume}
+        />
       ) : null}
       <RewriteSection targetId={targetId} initial={tailoredResume} />
     </div>
@@ -212,9 +229,11 @@ function CoverLetterCard({ targetId, text }: { targetId: string; text: string })
 function ResumeReviewCard({
   targetId,
   review,
+  currentResume,
 }: {
   targetId: string;
   review: ResumeReview;
+  currentResume: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
@@ -290,9 +309,86 @@ function ResumeReviewCard({
               No specific edits flagged for this role.
             </p>
           )}
+          <UpdatedResumePanel
+            currentResume={currentResume}
+            appliedCount={appliedCount}
+          />
         </CardContent>
       ) : null}
     </Card>
+  );
+}
+
+/**
+ * Shows the candidate's master resume_text — the same field that gets mutated
+ * each time an Apply button is clicked. Collapsed by default; the trigger
+ * label shows the applied-edit count so the user knows there's something to
+ * see. Includes a Download PDF button that hits /api/profile/resume-pdf.
+ */
+function UpdatedResumePanel({
+  currentResume,
+  appliedCount,
+}: {
+  currentResume: string | null;
+  appliedCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!currentResume) {
+    return (
+      <div className="rounded-xl border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-muted-foreground)]">
+        Upload a resume on your profile to enable Apply, view, and download.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/30">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full text-left p-4 flex items-center gap-3"
+      >
+        <FileText className="h-5 w-5 text-[var(--color-success)]" />
+        <div className="flex-1">
+          <div className="font-semibold">Your updated resume</div>
+          <div className="text-sm text-[var(--color-muted-foreground)]">
+            {appliedCount > 0
+              ? `${appliedCount} ${appliedCount === 1 ? "edit has" : "edits have"} been merged into your master resume.`
+              : "No edits applied yet — your master resume is unchanged."}
+          </div>
+        </div>
+        <span className="text-[var(--color-muted-foreground)]">
+          {open ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+        </span>
+      </button>
+      {open ? (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <CopyButton text={currentResume} />
+            <a
+              href="/api/profile/resume-pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--color-primary)] bg-[var(--color-primary)] px-3 text-xs font-medium text-white hover:opacity-90 transition"
+              title="Download as PDF"
+            >
+              <Download className="h-3 w-3" /> Download PDF
+            </a>
+          </div>
+          <div className="rounded-xl bg-[var(--color-background)] p-4 max-h-[500px] overflow-y-auto">
+            <pre className="whitespace-pre-wrap font-[inherit] text-sm leading-relaxed">
+              {currentResume}
+            </pre>
+          </div>
+          <p className="text-xs text-[var(--color-muted-foreground)] leading-relaxed">
+            This is your master resume — the one we use to tailor every new application.
+            Edits applied here flow into all your future targets too. To make manual
+            tweaks, head to your profile.
+          </p>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
