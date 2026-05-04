@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sparkles,
   Loader2,
@@ -16,6 +17,10 @@ import {
   ChevronDown,
   ChevronRight,
   Quote,
+  Pencil,
+  RefreshCw,
+  Download,
+  X,
 } from "lucide-react";
 import type { ResumeReview, ResumeEdit } from "@/lib/types";
 
@@ -44,14 +49,22 @@ export function ApplicationPack(props: PackProps) {
 
   return (
     <div className="space-y-6">
-      {pitchHeadline ? <PitchCard headline={pitchHeadline} /> : null}
-      {coverLetter ? <CoverLetterCard text={coverLetter} /> : null}
-      {resumeReview ? <ResumeReviewCard review={resumeReview} /> : null}
+      {pitchHeadline ? (
+        <PitchCard targetId={targetId} headline={pitchHeadline} />
+      ) : null}
+      {coverLetter ? (
+        <CoverLetterCard targetId={targetId} text={coverLetter} />
+      ) : null}
+      {resumeReview ? (
+        <ResumeReviewCard targetId={targetId} review={resumeReview} />
+      ) : null}
       <RewriteSection targetId={targetId} initial={tailoredResume} />
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// First-run trigger: no pack yet, full pack generation
 // ---------------------------------------------------------------------------
 
 function PackTrigger({ targetId }: { targetId: string }) {
@@ -91,21 +104,14 @@ function PackTrigger({ targetId }: { targetId: string }) {
             {error}
           </Alert>
         ) : null}
-        <Button
-          onClick={run}
-          disabled={running}
-          size="lg"
-          className="mt-6"
-        >
+        <Button onClick={run} disabled={running} size="lg" className="mt-6">
           {running ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Drafting…
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Drafting…
             </>
           ) : (
             <>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Generate application materials
+              <Sparkles className="mr-2 h-4 w-4" /> Generate application materials
             </>
           )}
         </Button>
@@ -118,8 +124,10 @@ function PackTrigger({ targetId }: { targetId: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Pitch headline — edit in place + regenerate
+// ---------------------------------------------------------------------------
 
-function PitchCard({ headline }: { headline: string }) {
+function PitchCard({ targetId, headline }: { targetId: string; headline: string }) {
   return (
     <Card className="border-2 border-[var(--color-primary)]/40">
       <CardHeader>
@@ -130,22 +138,32 @@ function PitchCard({ headline }: { headline: string }) {
             </div>
             <CardTitle className="mt-1 text-xl">Your pitch headline</CardTitle>
           </div>
-          <CopyButton text={headline} />
         </div>
       </CardHeader>
       <CardContent>
-        <p className="flex gap-2 text-lg leading-relaxed">
-          <Quote className="mt-1 h-5 w-5 flex-shrink-0 text-[var(--color-primary)]" />
-          <span>{headline}</span>
-        </p>
+        <EditableText
+          targetId={targetId}
+          field="pitch_headline"
+          value={headline}
+          which="pitch"
+          minRows={2}
+          renderView={(text) => (
+            <p className="flex gap-2 text-lg leading-relaxed">
+              <Quote className="mt-1 h-5 w-5 flex-shrink-0 text-[var(--color-primary)]" />
+              <span>{text}</span>
+            </p>
+          )}
+        />
       </CardContent>
     </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
+// Cover letter — edit in place + regenerate + copy
+// ---------------------------------------------------------------------------
 
-function CoverLetterCard({ text }: { text: string }) {
+function CoverLetterCard({ targetId, text }: { targetId: string; text: string }) {
   const [open, setOpen] = useState(true);
   return (
     <Card>
@@ -167,14 +185,20 @@ function CoverLetterCard({ text }: { text: string }) {
       </button>
       {open ? (
         <CardContent className="pt-0">
-          <div className="flex justify-end mb-2">
-            <CopyButton text={text} />
-          </div>
-          <div className="rounded-xl bg-[var(--color-muted)]/60 p-5">
-            <pre className="whitespace-pre-wrap font-[inherit] text-sm leading-relaxed">
-              {text}
-            </pre>
-          </div>
+          <EditableText
+            targetId={targetId}
+            field="cover_letter"
+            value={text}
+            which="cover"
+            minRows={12}
+            renderView={(t) => (
+              <div className="rounded-xl bg-[var(--color-muted)]/60 p-5">
+                <pre className="whitespace-pre-wrap font-[inherit] text-sm leading-relaxed">
+                  {t}
+                </pre>
+              </div>
+            )}
+          />
         </CardContent>
       ) : null}
     </Card>
@@ -182,9 +206,44 @@ function CoverLetterCard({ text }: { text: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Resume review — regenerate, apply edits, edit suggestions in place
+// ---------------------------------------------------------------------------
 
-function ResumeReviewCard({ review }: { review: ResumeReview }) {
+function ResumeReviewCard({
+  targetId,
+  review,
+}: {
+  targetId: string;
+  review: ResumeReview;
+}) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const appliedCount = review.edits.filter((e) => e.applied).length;
+
+  async function regenerate() {
+    if (
+      !window.confirm(
+        "Regenerate the resume review? Any unapplied edits will be replaced.",
+      )
+    ) {
+      return;
+    }
+    setRegenerating(true);
+    setError(null);
+    try {
+      await streamCall(
+        `/api/targets/${targetId}/application-pack?which=review&force=1`,
+      );
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
   return (
     <Card>
       <button
@@ -197,6 +256,7 @@ function ResumeReviewCard({ review }: { review: ResumeReview }) {
           <div className="font-semibold">Resume review</div>
           <div className="text-sm text-[var(--color-muted-foreground)]">
             {review.edits.length} suggested {review.edits.length === 1 ? "edit" : "edits"}
+            {appliedCount > 0 ? ` · ${appliedCount} applied` : ""}
           </div>
         </div>
         <span className="text-[var(--color-muted-foreground)]">
@@ -205,6 +265,10 @@ function ResumeReviewCard({ review }: { review: ResumeReview }) {
       </button>
       {open ? (
         <CardContent className="pt-0 space-y-4">
+          <div className="flex items-center justify-end">
+            <RegenButton onClick={regenerate} running={regenerating} label="Regenerate review" />
+          </div>
+          {error ? <Alert variant="error">{error}</Alert> : null}
           {review.summary ? (
             <CardDescription className="rounded-xl bg-[var(--color-muted)]/60 p-4 text-[var(--color-foreground)]">
               {review.summary}
@@ -213,7 +277,12 @@ function ResumeReviewCard({ review }: { review: ResumeReview }) {
           {review.edits.length > 0 ? (
             <ul className="space-y-3">
               {review.edits.map((edit, i) => (
-                <EditCard key={`${edit.section}-${i}`} edit={edit} />
+                <EditCard
+                  key={`${edit.section}-${i}`}
+                  edit={edit}
+                  index={i}
+                  targetId={targetId}
+                />
               ))}
             </ul>
           ) : (
@@ -227,11 +296,58 @@ function ResumeReviewCard({ review }: { review: ResumeReview }) {
   );
 }
 
-function EditCard({ edit }: { edit: ResumeEdit }) {
+function EditCard({
+  edit,
+  index,
+  targetId,
+}: {
+  edit: ResumeEdit;
+  index: number;
+  targetId: string;
+}) {
+  const router = useRouter();
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    setApplying(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/targets/${targetId}/apply-edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ editIndex: index }),
+      });
+      const body = (await res.json().catch(() => ({}))) as ApiResult;
+      if (!res.ok || body.ok === false) {
+        throw new Error(body.error ?? `Apply failed (${res.status})`);
+      }
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setApplying(false);
+    }
+  }
+
   return (
-    <li className="rounded-xl border border-[var(--color-border)] p-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
-        {edit.section}
+    <li
+      className={
+        "rounded-xl border p-4 " +
+        (edit.applied
+          ? "border-[var(--color-success)]/40 bg-[var(--color-success)]/5"
+          : "border-[var(--color-border)]")
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
+          {edit.section}
+        </div>
+        {edit.applied ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-success)]">
+            <Check className="h-3 w-3" /> Applied
+          </span>
+        ) : null}
       </div>
       <div className="mt-2 grid gap-2 md:grid-cols-2">
         <div>
@@ -257,10 +373,32 @@ function EditCard({ edit }: { edit: ResumeEdit }) {
           <strong className="text-[var(--color-foreground)]">Why:</strong> {edit.why}
         </p>
       ) : null}
+      {error ? (
+        <Alert variant="error" className="mt-3">
+          {error}
+        </Alert>
+      ) : null}
+      {!edit.applied ? (
+        <div className="mt-3 flex justify-end">
+          <Button size="sm" variant="outline" onClick={apply} disabled={applying}>
+            {applying ? (
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Applying…
+              </>
+            ) : (
+              <>
+                <Check className="mr-2 h-3.5 w-3.5" /> Apply to my resume
+              </>
+            )}
+          </Button>
+        </div>
+      ) : null}
     </li>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tailored rewrite — generate, edit in place, regenerate, copy, download PDF
 // ---------------------------------------------------------------------------
 
 function RewriteSection({
@@ -276,11 +414,18 @@ function RewriteSection({
   const [open, setOpen] = useState(true);
   const text = initial;
 
-  async function run() {
+  async function generate(force: boolean) {
+    if (force) {
+      if (!window.confirm("Regenerate the tailored rewrite? Any inline edits will be replaced.")) {
+        return;
+      }
+    }
     setRunning(true);
     setError(null);
     try {
-      await streamCall(`/api/targets/${targetId}/resume-rewrite`);
+      const url =
+        `/api/targets/${targetId}/resume-rewrite` + (force ? "?force=1" : "");
+      await streamCall(url);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -306,16 +451,14 @@ function RewriteSection({
                   {error}
                 </Alert>
               ) : null}
-              <Button onClick={run} disabled={running} className="mt-4">
+              <Button onClick={() => generate(false)} disabled={running} className="mt-4">
                 {running ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Rewriting…
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rewriting…
                   </>
                 ) : (
                   <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Generate tailored rewrite
+                    <Wand2 className="mr-2 h-4 w-4" /> Generate tailored rewrite
                   </>
                 )}
               </Button>
@@ -346,13 +489,37 @@ function RewriteSection({
       </button>
       {open ? (
         <CardContent className="pt-0">
-          <div className="flex justify-end mb-2">
-            <CopyButton text={text} />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <a
+              href={`/api/targets/${targetId}/resume-pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-8 items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-xs font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition"
+              title="Download as PDF"
+            >
+              <Download className="h-3.5 w-3.5" /> Download PDF
+            </a>
+            <RegenButton
+              onClick={() => generate(true)}
+              running={running}
+              label="Regenerate"
+            />
           </div>
-          <div className="rounded-xl bg-[var(--color-muted)]/60 p-5 max-h-[600px] overflow-y-auto">
-            <pre className="whitespace-pre-wrap font-[inherit] text-sm leading-relaxed">
-              {text}
-            </pre>
+          {error ? <Alert variant="error" className="mt-3">{error}</Alert> : null}
+          <div className="mt-3">
+            <EditableText
+              targetId={targetId}
+              field="tailored_resume"
+              value={text}
+              minRows={20}
+              renderView={(t) => (
+                <div className="rounded-xl bg-[var(--color-muted)]/60 p-5 max-h-[600px] overflow-y-auto">
+                  <pre className="whitespace-pre-wrap font-[inherit] text-sm leading-relaxed">
+                    {t}
+                  </pre>
+                </div>
+              )}
+            />
           </div>
         </CardContent>
       ) : null}
@@ -361,6 +528,185 @@ function RewriteSection({
 }
 
 // ---------------------------------------------------------------------------
+// Shared editable-text primitive: view / edit toggle, save via PATCH,
+// optional regenerate via streaming pack endpoint
+// ---------------------------------------------------------------------------
+
+interface EditableTextProps {
+  targetId: string;
+  field: "pitch_headline" | "cover_letter" | "tailored_resume";
+  value: string;
+  /**
+   * If provided, the regenerate button hits the application-pack endpoint
+   * with this `which` param. Omit for tailored_resume — that has its own
+   * regenerate button mounted separately so it can sit alongside Download.
+   */
+  which?: "pitch" | "cover";
+  minRows?: number;
+  renderView: (text: string) => React.ReactNode;
+}
+
+function EditableText({
+  targetId,
+  field,
+  value,
+  which,
+  minRows = 4,
+  renderView,
+}: EditableTextProps) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function start() {
+    setDraft(value);
+    setError(null);
+    setEditing(true);
+  }
+  function cancel() {
+    setEditing(false);
+    setDraft(value);
+    setError(null);
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/targets/${targetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: draft }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as ApiResult;
+        throw new Error(body.error ?? `Save failed (${res.status})`);
+      }
+      setEditing(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function regenerate() {
+    if (!which) return;
+    if (
+      !window.confirm(
+        "Regenerate this draft? Any inline edits you've made will be replaced.",
+      )
+    ) {
+      return;
+    }
+    setRegenerating(true);
+    setError(null);
+    try {
+      await streamCall(
+        `/api/targets/${targetId}/application-pack?which=${which}&force=1`,
+      );
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-3">
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={minRows}
+          className="font-mono text-sm"
+        />
+        {error ? <Alert variant="error">{error}</Alert> : null}
+        <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={cancel} disabled={saving}>
+            <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
+          </Button>
+          <Button size="sm" onClick={save} disabled={saving || draft === value}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Saving…
+              </>
+            ) : (
+              <>
+                <Check className="mr-1.5 h-3.5 w-3.5" /> Save
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <CopyButton text={value} />
+        <button
+          type="button"
+          onClick={start}
+          className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-xs font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition"
+          title="Edit"
+        >
+          <Pencil className="h-3 w-3" /> Edit
+        </button>
+        {which ? (
+          <RegenButton onClick={regenerate} running={regenerating} label="Regenerate" />
+        ) : null}
+      </div>
+      {error ? <Alert variant="error">{error}</Alert> : null}
+      {renderView(value)}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reusable buttons
+// ---------------------------------------------------------------------------
+
+function RegenButton({
+  onClick,
+  running,
+  label,
+}: {
+  onClick: () => void;
+  running: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={running}
+      className={
+        "inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition " +
+        (running
+          ? "border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-muted-foreground)] cursor-wait"
+          : "border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-muted-foreground)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)]")
+      }
+      title={label}
+    >
+      {running ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" /> Regenerating…
+        </>
+      ) : (
+        <>
+          <RefreshCw className="h-3 w-3" /> {label}
+        </>
+      )}
+    </button>
+  );
+}
 
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -401,12 +747,9 @@ function CopyButton({ text, small }: { text: string; small?: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
+// Stream reader — used by every long-running endpoint (heartbeat NDJSON)
+// ---------------------------------------------------------------------------
 
-/**
- * Read the NDJSON heartbeat stream from a generation endpoint and resolve when
- * the final result line arrives. Used by both Application Pack and Resume
- * Rewrite triggers.
- */
 async function streamCall(url: string): Promise<ApiResult> {
   const res = await fetch(url, {
     method: "POST",

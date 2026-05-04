@@ -55,8 +55,11 @@ Same structure as the original; do not invent credentials.
 Output ONLY the Markdown. No explanatory text before or after. No code fences.`;
 }
 
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
+  const url = new URL(request.url);
+  const force = url.searchParams.get("force") === "1";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -74,8 +77,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   }
   const target = targetRow as InterviewTarget;
 
-  // Idempotency
-  if (target.tailored_resume) {
+  // Idempotency — only short-circuit when caller didn't force a regen.
+  if (!force && target.tailored_resume) {
     return jsonResponse({ ok: true, alreadyGenerated: true }, 200);
   }
 

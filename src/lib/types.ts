@@ -70,6 +70,7 @@ export interface ResumeEdit {
   original: string;
   suggested: string;
   why: string;
+  applied?: boolean;
 }
 
 export interface ResumeReview {
