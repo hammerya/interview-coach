@@ -82,12 +82,12 @@ export default function Home() {
                 Dig deeper
               </span>
               <h2 className="display mt-4 text-3xl md:text-4xl font-semibold leading-tight">
-                Curious how the scoring works — or what comes next?
+                Curious how the scoring works — or which tier fits?
               </h2>
               <p className="mt-4 text-[var(--color-muted-foreground)] leading-relaxed">
                 Read about our process, the four dimensions we grade every answer on, and
-                the tiers — including the real-time Copilot coming to a live Zoom
-                interview near you.
+                the tiers — from a free warm-up plan to full resume and cover letter
+                support for when the stakes are real.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row gap-3">
                 <Link href="/process">

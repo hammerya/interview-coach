@@ -7,7 +7,7 @@ import { Check, Sparkles } from "lucide-react";
 export const metadata = {
   title: "Pricing · Interview Coach",
   description:
-    "Simple pricing — start free, upgrade when you need more. Pro unlocks unlimited practice interviews. Premium adds the real-time interview copilot.",
+    "Simple pricing — start free, upgrade when a real interview is on the calendar. Full Interview Prep unlocks unlimited practice. Add resume and cover letter review for the full job-search package.",
 };
 
 interface Tier {
@@ -25,54 +25,53 @@ interface Tier {
 const tiers: Tier[] = [
   {
     name: "Warm-up",
-    tagline: "Get a real feel for the tool.",
+    tagline: "Try the format risk-free.",
     price: "$0",
     priceNote: "free forever",
     cta: "Start for free",
     ctaHref: "/sign-up",
     features: [
-      "1 active interview target",
-      "3 practice interviews per month",
+      "2 five-question practice interviews per month",
       "Tailored question list with reasoning",
       "Per-answer scoring and feedback",
       "Resume upload and parsing",
       "Dictation for every answer",
+      "Voice readout for questions",
     ],
   },
   {
-    name: "Prep",
+    name: "Full Interview Prep",
     tagline: "For when a real interview is on the calendar.",
-    price: "$12",
+    price: "$9.99",
     priceNote: "per month · cancel any time",
-    cta: "Choose Prep",
-    ctaHref: "/sign-up?plan=prep",
+    cta: "Choose Full Prep",
+    ctaHref: "/sign-up?plan=full",
     highlight: true,
     features: [
       "Unlimited interview targets",
       "Unlimited practice interviews",
-      "All three interviewer personalities",
-      "Full answer history and progress tracking",
+      "Single, five-question, or full-length sessions",
+      "All three interviewer personalities — warm, analytical, challenging",
       "Sample answers on every question",
+      "Full answer history and progress tracking",
       "Priority question regeneration",
       "Email support",
     ],
   },
   {
-    name: "Copilot",
-    tagline: "Serious prep for high-stakes interviews.",
-    price: "$29",
+    name: "Resume + Cover Letter + Full Prep",
+    tagline: "End-to-end help — your story, your applications, your interviews.",
+    price: "$19.99",
     priceNote: "per month · cancel any time",
-    cta: "Choose Copilot",
-    ctaHref: "/sign-up?plan=copilot",
+    cta: "Choose the full package",
+    ctaHref: "/sign-up?plan=premium",
     features: [
-      "Everything in Prep",
-      "Personalized prep calendar tied to your interview date",
-      "Saved best-answer library you can recall mid-practice",
-      "Tone + pacing analysis on transcripts",
+      "Everything in Full Interview Prep",
+      "AI resume review with line-level edits",
+      "Resume rewrites tailored to each job description",
+      "Personalized cover letter drafted per role",
+      "“Why this candidate” headline for every application",
       "Priority support with 24-hour response",
-    ],
-    comingSoon: [
-      "Real-time interview copilot: listens during live Zoom interviews, surfaces answer-format reminders, and recalls your best previous answers in the moment.",
     ],
   },
 ];
@@ -91,7 +90,8 @@ export default function PricingPage() {
           </h1>
           <p className="mt-6 text-lg text-[var(--color-muted-foreground)] leading-relaxed">
             Every tier unlocks the warm, personalized prep experience. Paid tiers add
-            volume, memory, and — eventually — real-time coaching on the day of.
+            unlimited reps, deeper memory, and — at the top — full resume and cover
+            letter support.
           </p>
         </section>
 
@@ -120,12 +120,20 @@ export default function PricingPage() {
                   a="Your history is preserved. You drop back to Warm-up limits, but everything you've already done stays exactly where it is."
                 />
                 <Faq
-                  q="Is the real-time Copilot available yet?"
-                  a="Not yet — it's in active development. Choose Copilot now to lock in founding-member pricing and get early access the moment it ships."
+                  q="How does the monthly limit on Warm-up work?"
+                  a="You get 2 practice interviews per month, each one is 5 questions long. The counter resets on the first of the month. Upgrade to Full Prep any time you want unlimited."
+                />
+                <Faq
+                  q="What does the resume review actually do?"
+                  a="On the top tier we read your resume against the job description, suggest line-level edits, and draft a tailored cover letter you can send as-is or polish. You stay in control — every change is a suggestion you accept or reject."
                 />
                 <Faq
                   q="Do you offer a student or team discount?"
                   a="Yes on both. Email us once you've signed up and we'll sort it out."
+                />
+                <Faq
+                  q="What payment methods do you take?"
+                  a="All major credit and debit cards. Billing is handled by Stripe — we never see or store your card details."
                 />
               </div>
             </CardContent>
