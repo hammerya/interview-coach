@@ -1,6 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export const CLAUDE_MODEL = "claude-sonnet-4-6";
+// Updated 2026-10-28 — claude-sonnet-4-6 is still served, but 5-5 is the
+// current generation and is actually cheaper ($2/$10 vs $3/$15 per 1M).
+// No breaking changes affect this project's call shape: we don't send
+// thinking, tool_choice, computer-use tools, or advisors.
+export const CLAUDE_MODEL = "claude-sonnet-5-5";
 
 let cachedClient: Anthropic | null = null;
 

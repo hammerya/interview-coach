@@ -103,6 +103,12 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   // while Claude is generating; the final line is the JSON payload the client
   // actually uses.
   const encoder = new TextEncoder();
+  // Self-timeout well under Vercel's 60s hard cap so we have 10-15s to
+  // write an error JSON before the Lambda is forcibly terminated. Without
+  // this, a slow Anthropic or Supabase call makes the client see
+  // "Generation finished with no response" with no diagnostic info.
+  const GEN_TIMEOUT_MS = 45_000;
+
   const stream = new ReadableStream({
     async start(controller) {
       const heartbeat = setInterval(() => {
@@ -113,28 +119,67 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
         }
       }, 1000);
 
+      // Guarded enqueue so the final-line write can never silently throw
+      // and strand the client with heartbeats only.
+      const safeEmit = (payload: unknown) => {
+        try {
+          controller.enqueue(
+            encoder.encode("\n" + JSON.stringify(payload) + "\n"),
+          );
+        } catch (e) {
+          console.error("Failed to enqueue final response", e);
+        }
+      };
+
       try {
         const client = getAnthropic();
-        // Use streaming so we can collect tokens without blocking, and so
-        // Anthropic's SDK gives us progress. (We still buffer the final text.)
-        const streamResp = client.messages.stream({
-          model: CLAUDE_MODEL,
-          max_tokens: 4500,
-          system:
-            "You are a warm, encouraging interview coach who writes thoughtful, personalized interview question lists. You reply ONLY with valid JSON — no prose outside the JSON object.",
-          messages: [
-            {
-              role: "user",
-              content: buildPrompt(profile, target),
-            },
-          ],
+
+        const anthropicCall = (async () => {
+          const streamResp = client.messages.stream({
+            model: CLAUDE_MODEL,
+            max_tokens: 4500,
+            system:
+              "You are a warm, encouraging interview coach who writes thoughtful, personalized interview question lists. You reply ONLY with valid JSON — no prose outside the JSON object.",
+            messages: [
+              { role: "user", content: buildPrompt(profile, target) },
+            ],
+          });
+          return await streamResp.finalMessage();
+        })();
+
+        const timeout = new Promise<never>((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Model call exceeded ${GEN_TIMEOUT_MS / 1000}s — try again`,
+                ),
+              ),
+            GEN_TIMEOUT_MS,
+          );
         });
 
-        const final = await streamResp.finalMessage();
+        const final = await Promise.race([anthropicCall, timeout]);
+
+        // Safety classifiers on Sonnet 5-5 can return a refusal. Surface it
+        // cleanly instead of trying to parse an empty content array as JSON.
+        if (final.stop_reason === "refusal") {
+          const detail =
+            final.stop_details && "category" in final.stop_details
+              ? (final.stop_details as { category?: string }).category
+              : null;
+          throw new Error(
+            `Model declined to answer${detail ? ` (${detail})` : ""}`,
+          );
+        }
+
         const text = final.content
           .filter((b) => b.type === "text")
           .map((b) => (b as { text: string }).text)
           .join("\n");
+        if (!text.trim()) {
+          throw new Error("Model returned no text content");
+        }
         const llm = extractJson<LLMResponse>(text);
         const questions: GeneratedQuestion[] = (llm.questions ?? []).map((q) => ({
           id: randomUUID(),
@@ -144,6 +189,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
           answerFormat: q.answerFormat,
           sampleAnswer: q.sampleAnswer,
         }));
+        if (questions.length === 0) {
+          throw new Error("Model produced no questions");
+        }
 
         const { error: updateErr } = await supabase
           .from("interview_targets")
@@ -154,27 +202,21 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
           .eq("id", id);
         if (updateErr) throw new Error(updateErr.message);
 
-        controller.enqueue(
-          encoder.encode(
-            "\n" + JSON.stringify({ ok: true, count: questions.length }) + "\n",
-          ),
-        );
+        safeEmit({ ok: true, count: questions.length });
       } catch (err) {
         console.error("Question generation failed", err);
-        controller.enqueue(
-          encoder.encode(
-            "\n" +
-              JSON.stringify({
-                ok: false,
-                error: "Generation failed",
-                detail: String(err),
-              }) +
-              "\n",
-          ),
-        );
+        safeEmit({
+          ok: false,
+          error: "Generation failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         clearInterval(heartbeat);
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       }
     },
   });

@@ -99,6 +99,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   const encoder = new TextEncoder();
+  const GEN_TIMEOUT_MS = 45_000;
+
   const stream = new ReadableStream({
     async start(controller) {
       const heartbeat = setInterval(() => {
@@ -109,17 +111,51 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         }
       }, 1000);
 
+      const safeEmit = (payload: unknown) => {
+        try {
+          controller.enqueue(
+            encoder.encode("\n" + JSON.stringify(payload) + "\n"),
+          );
+        } catch (e) {
+          console.error("Failed to enqueue final response", e);
+        }
+      };
+
       try {
         const client = getAnthropic();
-        const streamResp = client.messages.stream({
-          model: CLAUDE_MODEL,
-          max_tokens: 4500,
-          system:
-            "You are a sharp resume writer. You output ONLY clean Markdown — no preamble, no commentary, no code fences.",
-          messages: [{ role: "user", content: buildPrompt(profile, target) }],
+        const anthropicCall = (async () => {
+          const streamResp = client.messages.stream({
+            model: CLAUDE_MODEL,
+            max_tokens: 4500,
+            system:
+              "You are a sharp resume writer. You output ONLY clean Markdown — no preamble, no commentary, no code fences.",
+            messages: [{ role: "user", content: buildPrompt(profile, target) }],
+          });
+          return await streamResp.finalMessage();
+        })();
+        const timeout = new Promise<never>((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Model call exceeded ${GEN_TIMEOUT_MS / 1000}s — try again`,
+                ),
+              ),
+            GEN_TIMEOUT_MS,
+          );
         });
+        const final = await Promise.race([anthropicCall, timeout]);
 
-        const final = await streamResp.finalMessage();
+        if (final.stop_reason === "refusal") {
+          const detail =
+            final.stop_details && "category" in final.stop_details
+              ? (final.stop_details as { category?: string }).category
+              : null;
+          throw new Error(
+            `Model declined to answer${detail ? ` (${detail})` : ""}`,
+          );
+        }
+
         const markdown = final.content
           .filter((b) => b.type === "text")
           .map((b) => (b as { text: string }).text)
@@ -134,25 +170,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           .eq("id", id);
         if (updateErr) throw new Error(updateErr.message);
 
-        controller.enqueue(
-          encoder.encode("\n" + JSON.stringify({ ok: true }) + "\n"),
-        );
+        safeEmit({ ok: true });
       } catch (err) {
         console.error("Resume rewrite failed", err);
-        controller.enqueue(
-          encoder.encode(
-            "\n" +
-              JSON.stringify({
-                ok: false,
-                error: "Rewrite failed",
-                detail: String(err),
-              }) +
-              "\n",
-          ),
-        );
+        safeEmit({
+          ok: false,
+          error: "Rewrite failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         clearInterval(heartbeat);
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       }
     },
   });
